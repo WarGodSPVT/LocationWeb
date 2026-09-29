@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Location Share</title>
 
     <style>
@@ -22,7 +24,8 @@
             border-radius: 15px;
         }
 
-        input, button {
+        input,
+        button {
             width: 100%;
             box-sizing: border-box;
             padding: 14px;
@@ -36,107 +39,215 @@
             background: #4f7cff;
             color: white;
             font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.6;
         }
 
         #status {
             margin-top: 20px;
+            line-height: 1.5;
+        }
+
+        .notice {
+            color: #aaa;
+            font-size: 13px;
+            margin-top: 15px;
         }
     </style>
 </head>
 
 <body>
 
-<div class="box">
+    <div class="box">
 
-    <h1>Share Your Location</h1>
+        <h1>Share Your Location</h1>
 
-    <p>
-        Enter your name and choose whether you want to share
-        your current location.
-    </p>
+        <p>
+            Enter your name and choose whether you want to share
+            your current location.
+        </p>
 
-    <input id="name" type="text" placeholder="Your name">
+        <input
+            id="name"
+            type="text"
+            placeholder="Your name"
+            maxlength="80"
+        >
 
-    <button onclick="shareLocation()">
-        Share My Location
-    </button>
+        <button id="shareButton" onclick="shareLocation()">
+            Share My Location
+        </button>
 
-    <div id="status"></div>
+        <div id="status"></div>
 
-</div>
+        <div class="notice">
+            Your browser will ask for location permission.
+            Your location is sent only after you allow access.
+        </div>
 
-<script>
+    </div>
 
-function shareLocation() {
+    <script>
 
-    const name = document.getElementById("name").value.trim();
-    const status = document.getElementById("status");
+        async function shareLocation() {
 
-    if (!name) {
-        status.innerText = "Please enter your name.";
-        return;
-    }
+            const name =
+                document.getElementById("name").value.trim();
 
-    if (!navigator.geolocation) {
-        status.innerText = "Location is not supported by this browser.";
-        return;
-    }
+            const status =
+                document.getElementById("status");
 
-    status.innerText = "Requesting location permission...";
+            const button =
+                document.getElementById("shareButton");
 
-    navigator.geolocation.getCurrentPosition(
 
-        function(position) {
+            if (!name) {
 
-            const data = {
-                name: name,
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                accuracy: position.coords.accuracy,
-                time: new Date().toISOString()
-            };
-
-            fetch("/submit", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(data)
-            })
-
-            .then(response => response.json())
-
-            .then(result => {
                 status.innerText =
-                    "Location shared successfully!";
-            })
+                    "Please enter your name.";
 
-            .catch(error => {
-                status.innerText =
-                    "Could not send the location to the server.";
-            });
-        },
-
-        function(error) {
-
-            if (error.code === 1) {
-                status.innerText =
-                    "Location permission was denied.";
-            } else {
-                status.innerText =
-                    "Could not get your location.";
+                return;
             }
-        },
 
-        {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
+
+            if (!navigator.geolocation) {
+
+                status.innerText =
+                    "Location is not supported by this browser.";
+
+                return;
+            }
+
+
+            status.innerText =
+                "Requesting location permission...";
+
+            button.disabled = true;
+
+
+            navigator.geolocation.getCurrentPosition(
+
+                async function(position) {
+
+                    status.innerText =
+                        "Location received. Sending to server...";
+
+
+                    const data = {
+
+                        name: name,
+
+                        latitude:
+                            position.coords.latitude,
+
+                        longitude:
+                            position.coords.longitude,
+
+                        accuracy:
+                            position.coords.accuracy,
+
+                        time:
+                            new Date().toISOString()
+                    };
+
+
+                    try {
+
+                        const response =
+                            await fetch("/submit", {
+
+                                method: "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json"
+                                },
+
+                                body:
+                                    JSON.stringify(data)
+                            });
+
+
+                        if (!response.ok) {
+
+                            throw new Error(
+                                "Server returned " +
+                                response.status
+                            );
+                        }
+
+
+                        status.innerText =
+                            "Location submitted successfully!";
+
+                    }
+
+                    catch (error) {
+
+                        console.error(error);
+
+                        status.innerText =
+                            "Location was received, but sending failed.";
+                    }
+
+                    finally {
+
+                        button.disabled = false;
+                    }
+                },
+
+
+                function(error) {
+
+                    console.log(
+                        "Geolocation error:",
+                        error
+                    );
+
+
+                    if (error.code === 1) {
+
+                        status.innerText =
+                            "Location permission was denied.";
+
+                    } else if (error.code === 2) {
+
+                        status.innerText =
+                            "Location is currently unavailable.";
+
+                    } else if (error.code === 3) {
+
+                        status.innerText =
+                            "Location request timed out.";
+
+                    } else {
+
+                        status.innerText =
+                            "Could not get your location.";
+                    }
+
+
+                    button.disabled = false;
+                },
+
+
+                {
+
+                    enableHighAccuracy: false,
+
+                    timeout: 10000,
+
+                    maximumAge: 60000
+                }
+
+            );
         }
-    );
-}
 
-</script>
+    </script>
 
 </body>
+
 </html>
