@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Share</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .box {
+            max-width: 400px;
+            margin: auto;
+            background: #222;
+            padding: 25px;
+            border-radius: 15px;
+        }
+
+        input, button {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 14px;
+            margin-top: 12px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+        }
+
+        button {
+            background: #4f7cff;
+            color: white;
+            font-weight: bold;
+        }
+
+        #status {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="box">
+
+    <h1>Share Your Location</h1>
+
+    <p>
+        Enter your name and choose whether you want to share
+        your current location.
+    </p>
+
+    <input id="name" type="text" placeholder="Your name">
+
+    <button onclick="shareLocation()">
+        Share My Location
+    </button>
+
+    <div id="status"></div>
+
+</div>
+
+<script>
+
+function shareLocation() {
+
+    const name = document.getElementById("name").value.trim();
+    const status = document.getElementById("status");
+
+    if (!name) {
+        status.innerText = "Please enter your name.";
+        return;
+    }
+
+    if (!navigator.geolocation) {
+        status.innerText = "Location is not supported by this browser.";
+        return;
+    }
+
+    status.innerText = "Requesting location permission...";
+
+    navigator.geolocation.getCurrentPosition(
+
+        function(position) {
+
+            const data = {
+                name: name,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                time: new Date().toISOString()
+            };
+
+            fetch("/submit", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            })
+
+            .then(response => response.json())
+
+            .then(result => {
+                status.innerText =
+                    "Location shared successfully!";
+            })
+
+            .catch(error => {
+                status.innerText =
+                    "Could not send the location to the server.";
+            });
+        },
+
+        function(error) {
+
+            if (error.code === 1) {
+                status.innerText =
+                    "Location permission was denied.";
+            } else {
+                status.innerText =
+                    "Could not get your location.";
+            }
+        },
+
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+        }
+    );
+}
+
+</script>
+
+</body>
+</html>
